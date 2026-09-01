@@ -53,20 +53,42 @@ journalctl -b 0 | grep -c 'PM: suspend entry'   # → 0
 
 ---
 
-## 2. Hibernate on a dead battery = bricked boot
+## 2. Dead battery = no sleep at all (not just no hibernate)
 
-**Symptom:** machine hibernates (or suspend-then-hibernates), and with a battery that
-can't hold charge, resume is unreliable — sometimes a hard crash, sometimes a black
-screen needing a forced reboot.
+**Symptom:** the machine suspends at boot (~30s in), and hibernate/suspend-then-
+hibernate is a brick risk. Both trace to the same root: **the battery is dead
+and the machine runs on AC alone.**
 
-**Fix** — mask the targets and refuse at the config layer (belt and braces, so an update
-unmasking the target still can't re-enable it):
+**Why we disable ALL sleep — not just hibernation:**
+
+- A dead battery (0% capacity) means the machine has **no power reserve during
+  sleep**. Suspend keeps state in RAM, but the battery is what holds the machine
+  up. Any AC blip while suspended (charger bumped, power strip flipped, brief
+  outage) = hard power loss = crash on wake, possibly filesystem damage.
+- The machine is a **server** (agent gateway, SSH, web). A sleeping server is a
+  down server. It should be on 24/7 — that's the whole point.
+- s2idle is the only reliable suspend mode on 2015 MacBooks anyway (no ACPI S3),
+  and it's pointless on a battery-less box.
+
+**Fix** — three layers, so no single update can resurrect sleep:
 
 ```bash
+# Layer 1: mask the hibernate family (nothing to hibernate INTO)
 sudo systemctl mask hibernate.target hybrid-sleep.target suspend-then-hibernate.target
 
+# Layer 2: refuse hibernation at the config layer
+sudo mkdir -p /etc/systemd/sleep.conf.d
 sudo tee /etc/systemd/sleep.conf.d/20-no-hibernate.conf >/dev/null <<'EOF'
 [Sleep]
+AllowHibernation=no
+AllowHybridSleep=no
+AllowSuspendThenHibernate=no
+EOF
+
+# Layer 3: refuse SUSPEND too — this box must never sleep by any path
+sudo tee /etc/systemd/sleep.conf.d/30-no-suspend.conf >/dev/null <<'EOF'
+[Sleep]
+AllowSuspend=no
 AllowHibernation=no
 AllowHybridSleep=no
 AllowSuspendThenHibernate=no
@@ -75,13 +97,26 @@ EOF
 sudo systemctl daemon-reload
 ```
 
-Suspend stays *allowed* — manual sleep / the sleep menu still works; we only kill the
-hibernate family. (On this hardware s2idle is the only reliable suspend anyway:
-`MemorySleepMode=s2idle SuspendState=freeze` per the MacBook recipe, see
-[`configs/systemd/10-mac-sleep.conf`](../configs/systemd/10-mac-sleep.conf).)
+Layer 3 (`AllowSuspend=no`) makes logind reject **every** suspend request from
+**any** client — sleep menu, `systemctl suspend`, lid close, power button,
+UPower, all of it. That's the intended end state for a dead-battery server:
+[`configs/systemd/30-no-suspend.conf`](../configs/systemd/30-no-suspend.conf)
+documents the full reasoning. (On a MacBook with a WORKING battery you'd skip
+layer 3 and keep manual suspend — see the "working battery" note below.)
 
-**Verify:** `systemctl is-enabled hibernate.target` → `masked`; `systemctl hibernate`
-→ "Unit hibernate.target is masked, refusing operation."
+> **Working-battery MacBook?** Keep layer 3 out. Mask only the hibernate
+> family + `AllowHibernation=no`; suspend stays available so the lid still
+> sleeps the laptop when you carry it. The dead-battery box is the special
+> case where ALL sleep must go.
+
+**Verify:**
+```bash
+systemctl is-enabled hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+#   → masked / masked / masked
+busctl call org.freedesktop.login1 /org/freedesktop/login1 \
+  org.freedesktop.login1.Manager CanSuspend
+#   → s "no"   ← logind will refuse every suspend request
+```
 
 ---
 

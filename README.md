@@ -48,7 +48,7 @@ sudo bash scripts/setup-fail2ban.sh       # see docs/05-hardening.md
 | Symptom | Root cause | Fix |
 |---|---|---|
 | Machine suspends ~30s after every boot; SSH dies until login | UPower `CriticalPowerAction=Auto` + dead battery at 0% reads as "discharging ≤2%" before AC is noticed | `CriticalPowerAction=Ignore` drop-in ([configs/UPower](configs/UPower/20-dead-battery.conf)) |
-| Hibernate on a dead battery = bricked boot | systemd hibernate targets unmasked, `suspend-then-hibernate` armed | Mask targets + `AllowSuspendThenHibernate=no` |
+| Hibernate on a dead battery = bricked boot | systemd hibernate targets unmasked, `suspend-then-hibernate` armed | Mask targets + `AllowSuspendThenHibernate=no` + `AllowSuspend=no` (dead battery = no sleep at all; see [docs/02](docs/02-power-fixes.md#2-dead-battery--no-sleep-at-all-not-just-no-hibernate)) |
 | SSH/hermes come up only *after* login | Boot-blocking oneshots in the systemd target chain (3-5 min greeter-blank / probe) | Detach with `systemd-run --no-block` |
 | Crazy fullscreen screensaver | Omarchy `ttfx --random-effect --frame-rate 120` | User shadow: calm effects, 30fps ([scripts/calm-screensaver.sh](scripts/calm-screensaver.sh)) |
 | State.db corruption / lost replies | Disk I/O errors → torn SQLite pages in `messages` | `hermes sessions recover --allow-partial` (see [docs/articles/state-db-recovery.md](docs/articles/state-db-recovery.md)) |

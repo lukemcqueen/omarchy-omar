@@ -11,6 +11,7 @@ set -euo pipefail
 
 UPOWER_DROPIN="/etc/UPower/UPower.conf.d/20-dead-battery.conf"
 SLEEP_DROPIN="/etc/systemd/sleep.conf.d/20-no-hibernate.conf"
+NO_SUSPEND_DROPIN="/etc/systemd/sleep.conf.d/30-no-suspend.conf"
 HIB_TARGETS=(hibernate.target hybrid-sleep.target suspend-then-hibernate.target)
 CHECK_ONLY=0
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=1
@@ -58,7 +59,7 @@ EOF
   fi
 }
 
-# --- 2. systemd: mask hibernate family (dead battery = no hibernation) -----
+# --- 2. systemd: mask hibernate family + refuse ALL sleep (dead battery) ---
 apply_hibernate() {
   say "systemd: mask hibernate/hybrid/suspend-then-hibernate targets"
   for t in "${HIB_TARGETS[@]}"; do
@@ -95,6 +96,39 @@ AllowSuspendThenHibernate=no
 EOF
     sudo systemctl daemon-reload
     ok "sleep.conf.d drop-in written"
+  fi
+
+  # Layer 3 (dead-battery server only): refuse SUSPEND entirely.
+  # On a WORKING-battery MacBook, skip this so the lid can still sleep the
+  # laptop. On a dead-battery AC-only server, any sleep = a down server and
+  # a power blip during sleep = crash on wake. All sleep must go.
+  if [[ "${DISABLE_ALL_SLEEP:-1}" == "1" ]]; then
+    say "systemd: refuse ALL suspend (dead-battery server — CanSuspend=no)"
+    if [[ -f "$NO_SUSPEND_DROPIN" ]] && grep -q '^AllowSuspend=no' "$NO_SUSPEND_DROPIN"; then
+      ok "no-suspend drop-in present"
+    else
+      if [[ $CHECK_ONLY -eq 1 ]]; then
+        echo "  MISSING: $NO_SUSPEND_DROPIN"
+        return 1
+      fi
+      sudo mkdir -p /etc/systemd/sleep.conf.d
+      sudo tee "$NO_SUSPEND_DROPIN" >/dev/null <<'EOF'
+# Dead-battery fix (omarchy-omar): refuse ALL sleep at the logind level.
+# Dead battery = no power reserve during sleep; AC blip while suspended =
+# hard power loss. This box is a server: on 24/7 or it's down.
+# Working-battery laptop? Remove this file (keep 20-no-hibernate.conf only).
+[Sleep]
+AllowSuspend=no
+AllowHibernation=no
+AllowHybridSleep=no
+AllowSuspendThenHibernate=no
+EOF
+      sudo systemctl daemon-reload
+      ok "no-suspend drop-in written"
+    fi
+  else
+    say "systemd: suspend stays ALLOWED (DISABLE_ALL_SLEEP=0)"
+    ok "not touching suspend — working-battery mode"
   fi
 }
 
