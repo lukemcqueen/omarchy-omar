@@ -53,6 +53,8 @@ install_pkg() {
     sudo pacman -S --needed --noconfirm fail2ban
   elif command -v apt-get >/dev/null 2>&1; then
     sudo apt-get install -y fail2ban
+  elif command -v brew >/dev/null 2>&1; then
+    brew install fail2ban
   else
     echo "Unsupported package manager — install fail2ban manually."
     return 1
@@ -60,20 +62,75 @@ install_pkg() {
   ok "fail2ban installed"
 }
 
+# Arch's fail2ban package does NOT ship nginx filter files (Debian/Ubuntu
+# do) — without them the nginx jails fail to load and the service exits.
+# Ship the standard filters explicitly on every distro.
+install_filters() {
+  local filter_dir="/etc/fail2ban/filter.d"
+  if command -v brew >/dev/null 2>&1; then
+    filter_dir="$(brew --prefix 2>/dev/null || echo /usr/local)/etc/fail2ban/filter.d"
+  fi
+  if [[ -f "$filter_dir/nginx-badbots.conf" && -f "$filter_dir/nginx-http-auth.conf" ]]; then
+    ok "nginx filters present"
+    return 0
+  fi
+  if [[ $CHECK_ONLY -eq 1 ]]; then
+    echo "  MISSING: nginx filters in $filter_dir"
+    return 1
+  fi
+  sudo mkdir -p "$filter_dir"
+  if [[ ! -f "$filter_dir/nginx-http-auth.conf" ]]; then
+    sudo tee "$filter_dir/nginx-http-auth.conf" >/dev/null <<'EOF'
+[Definition]
+
+failregex = ^ \[error\] \d+#\d+: \*\d+ user "(?P<user>[^"]+)":? (?:password mismatch|was not found in "[^"]*"|user not found), client: <HOST>, server: \S*, request: "\S+ \S+ HTTP/\d+\.\d+", host: "\S+(?::\d+)?"(?:, referrer: "\S+")?\s*$
+
+ignoreregex =
+
+[Init]
+
+# default port if not specified in jail.conf
+port = http,https
+EOF
+  fi
+  if [[ ! -f "$filter_dir/nginx-badbots.conf" ]]; then
+    sudo tee "$filter_dir/nginx-badbots.conf" >/dev/null <<'EOF'
+[Definition]
+
+failregex = ^<HOST> -.*"(GET|POST|HEAD|PUT|DELETE|OPTIONS).*"(?:[12345]\d\d) .*"(?:Mozilla.*(?:BOT|bot|spider|crawl|curl|wget|scrapy|python-requests|Go-http-client)|curl|wget|Scrapy|python-requests|Go-http-client).*"$
+            ^<HOST> -.*"(GET|POST|HEAD|PUT|DELETE|OPTIONS).*"(?:[12345]\d\d) .*"(?:${_badbotscustom})"$
+
+ignoreregex =
+
+[Init]
+
+# List of bad bots to ban
+_badbotscustom = 12345|Badbot|Baiduspider|Curl|Go-http-client|libwww-perl|Lwp-trivial|MJ12bot|python-requests|Scrapy|Wget|YandexBot
+
+# default port if not specified in jail.conf
+port = http,https
+EOF
+  fi
+  ok "nginx filters written"
+}
+
 need_sudo
 RC=0
 install_pkg || RC=1
+install_filters || RC=1
 
-# Defaults: nftables backend, systemd backend
+# Defaults: nftables backend (Linux) / pf (macOS), systemd backend
+_BANACTION="nftables"
+command -v brew >/dev/null 2>&1 && _BANACTION="pf"
 write_jail "defaults-local.conf" \
-'[DEFAULT]
-banaction = nftables
-banaction_allports = nftables[type=allports]
+"[DEFAULT]
+banaction = ${_BANACTION}
+banaction_allports = ${_BANACTION}[type=allports]
 backend = systemd
 
 [sshd]
 enabled = true
-' || RC=1
+" || RC=1
 
 # nginx auth failures → 1h ban
 write_jail "nginx-auth.local" \
