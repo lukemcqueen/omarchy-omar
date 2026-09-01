@@ -163,6 +163,21 @@ sudo nft list set inet f2b-table addr-set f2b-sshd   # → the ban set, live
 The nftables backend means bans show up as nft sets — inspectable and unloadable
 (`nft flush set inet f2b-table ...`) if you ever need to unban manually.
 
+### ⚠️ Known pitfall: Arch's fail2ban package ships NO nginx filters
+
+**Discovered live (2026-09-01):** Arch's `fail2ban` package does **not** include
+`filter.d/nginx-http-auth.conf` or `filter.d/nginx-badbots.conf` (Debian/Ubuntu do).
+Referencing those jails without installing the filters makes the jail fail to load —
+the service logs `Found no accessible config files for 'filter.d/nginx-badbots'` and
+exits 255 on restart. Symptom: `fail2ban-client status` shows sshd but the nginx jails
+are missing, or the service is crash-looping.
+
+**Fix:** `scripts/setup-fail2ban.sh` now writes both standard filter files before
+enabling the jails (the `install_filters()` step). If you configured fail2ban by hand,
+copy the filters from the script or from a Debian/Ubuntu install of fail2ban into
+`/etc/fail2ban/filter.d/`, then `systemctl restart fail2ban`. macOS (brew) has the
+same gap — the script handles it via the brew prefix path.
+
 ## 5. Keep it from going stale
 
 - `sudo pacman -Syu` regularly — old Macs can't afford known CVEs either.
