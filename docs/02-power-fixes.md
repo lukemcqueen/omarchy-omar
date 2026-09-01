@@ -153,8 +153,15 @@ ExecStart=/usr/bin/systemd-run --no-block --unit=greeter-blank-detached --collec
   /usr/local/sbin/greeter-blank.sh
 ```
 
-The probe: check `$XDG_RUNTIME_DIR/hypr` **before** the legacy `/tmp/hypr` path (the
-old order wasted the whole budget on a path that moved), with a short 10s budget.
+The probe: the greeter's Hyprland compositor runs as **root**
+(`sddm.conf.d/10-wayland.conf` → `CompositorCommand=start-hyprland`), so its socket
+lives under `/tmp/hypr` (when `XDG_RUNTIME_DIR` is unset) or `/run/user/0/hypr` —
+probe those, with a short 10s budget. **Never probe `/run/user/<uid>`** (a logged-in
+user's session): v2 fell back to `/run/user/1000` when root's `XDG_RUNTIME_DIR` was
+unset, found the *user's* Hyprland socket (autologin kills the greeter in ~1s), and
+blanked the user's desktop ~3min after boot — indistinguishable from "suspending at
+login". v3 (2026-09-01): probes only `/tmp/hypr` + `/run/user/0/hypr`, blanks at 30s,
+and re-checks the socket still belongs to the greeter before dispatching `dpms off`.
 Full working units + script: [`scripts/fix-boot-blockers.sh`](../scripts/fix-boot-blockers.sh).
 
 ---

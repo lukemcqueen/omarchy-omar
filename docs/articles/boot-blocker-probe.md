@@ -42,7 +42,7 @@ at 148s. The boot chain wasn't finished — so nothing that `Wants=multi-user.ta
 services **complete**. Two distro services were burning the entire budget:
 
 - a boot-reachability probe that polled for up to 5 minutes
-- an SDDM greeter-blank service sleeping 60–120s probing socket paths that had moved
+- an SDDM greeter-blank service sleeping 60–120s probing Hyprland socket paths
 
 So the login "fixed" it only because by the time you typed a password, the chain had
 finally completed. The login was *correlated*, not causal.
@@ -60,9 +60,16 @@ ExecStart=/usr/bin/systemd-run --no-block --unit=greeter-blank-detached --collec
   /usr/local/sbin/greeter-blank.sh
 ```
 
-Also fix the probe itself: check `$XDG_RUNTIME_DIR/hypr` **before** the legacy
-`/tmp/hypr` path (the old order burned the whole budget on a path that had moved), with
-a short 10s budget instead of 5 minutes.
+Also fix the probe itself: the greeter's Hyprland compositor runs as **root**
+(`sddm.conf.d/10-wayland.conf` → `CompositorCommand=start-hyprland`), so its socket
+lives under `/tmp/hypr` (when `XDG_RUNTIME_DIR` is unset) or `/run/user/0/hypr` — with
+a short 10s budget instead of 5 minutes. **Never probe `/run/user/<uid>`**: that is a
+logged-in user's session. v2 fell back to `/run/user/1000` when root's
+`XDG_RUNTIME_DIR` was unset, found the *user's* Hyprland socket (autologin kills the
+greeter in ~1s), and blanked the user's desktop ~3min after boot — indistinguishable
+from "suspending at login after reboot". v3 (2026-09-01): probes only `/tmp/hypr` +
+`/run/user/0/hypr`, blanks at 30s, and re-checks the socket still belongs to the
+greeter before dispatching `dpms off`.
 
 ## The general lesson: prove it with a probe before changing architecture
 
