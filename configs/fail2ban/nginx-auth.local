@@ -1,0 +1,11 @@
+# fail2ban jail — nginx HTTP auth failures (omarchy-omar).
+#
+# Install:  sudo cp this file to /etc/fail2ban/jail.d/nginx-auth.local
+#           sudo systemctl restart fail2ban
+[nginx-http-auth]
+enabled  = true
+port     = http,https
+filter   = nginx-http-auth
+logpath  = /var/log/nginx/*error.log
+maxretry = 5
+bantime  = 3600

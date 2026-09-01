@@ -1,0 +1,20 @@
+# wayvnc config template (omarchy-omar) — secure VNC on Wayland.
+#
+# Notes:
+#   - enable_auth=true REQUIRES the TLS cert/key pair (wayvnc ≥0.10).
+#   - Generate the self-signed cert once:
+#       cd ~/.config/wayvnc
+#       openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
+#         -days 365 -nodes -subj "/CN=wayvnc"
+#   - Replace YOURUSER and the password. Run it inside Tailscale (docs/04).
+#   - Tighter option: bind to your tailnet IP instead of 0.0.0.0.
+#
+# Autostart (Omarchy/Hyprland): add to ~/.config/hypr/autostart.lua
+#   o.launch_on_start("wayvnc -C /home/YOURUSER/.config/wayvnc/config")
+address=0.0.0.0
+port=5900
+enable_auth=true
+password=REPLACE_WITH_STRONG_PASSWORD
+certificate_file=/home/YOURUSER/.config/wayvnc/cert.pem
+private_key_file=/home/YOURUSER/.config/wayvnc/key.pem
+use_relative_paths=false

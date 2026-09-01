@@ -1,0 +1,12 @@
+# fail2ban jail — known bad bots (omarchy-omar).
+#
+# Install:  sudo cp this file to /etc/fail2ban/jail.d/nginx-badbots.local
+#           sudo systemctl restart fail2ban
+[nginx-badbots]
+enabled  = true
+port     = http,https
+filter   = nginx-badbots
+logpath  = /var/log/nginx/access.log
+maxretry = 1
+bantime  = 86400
+findtime = 86400
