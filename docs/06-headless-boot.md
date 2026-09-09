@@ -63,10 +63,12 @@ the pacman hook so future rebuilds also refresh the hash).
 # false-negatives on the zstd member)
 sudo objcopy --dump-section .initrd=/tmp/i.cpio /boot/EFI/Linux/omarchy_linux.efi
 lsinitcpio -l /tmp/i.cpio | grep luks            # → /boot/mykey.bin = GOOD
+rm -f /tmp/i.cpio                                # scratch only — not part of the fix
 
 # cryptkey in the UKI cmdline
 sudo objcopy --dump-section .cmdline=/tmp/c.bin /boot/EFI/Linux/omarchy_linux.efi
 strings /tmp/c.bin | grep cryptkey               # → cryptkey=rootfs:/boot/mykey.bin
+rm -f /tmp/c.bin
 
 # Limine hash: stored == actual (else boot warns "Blake2b ... does not match")
 sudo b2sum -l 512 /boot/EFI/Linux/omarchy_linux.efi

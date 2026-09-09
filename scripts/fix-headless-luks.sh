@@ -68,7 +68,7 @@ EOF
 ok "pacman hook installed (auto-refresh hash on package updates)"
 
 echo
-echo "Verify from the deployed artifact:"
-echo "  objcopy --dump-section .initrd=/tmp/i.cpio \"$UKI\" && lsinitcpio -l /tmp/i.cpio | grep luks"
-echo "  objcopy --dump-section .cmdline=/tmp/c.bin \"$UKI\" && strings /tmp/c.bin | grep cryptkey"
+echo "Verify from the deployed artifact (scratch files, rm after):"
+echo "  objcopy --dump-section .initrd=/tmp/i.cpio \"$UKI\" && lsinitcpio -l /tmp/i.cpio | grep luks && rm -f /tmp/i.cpio"
+echo "  objcopy --dump-section .cmdline=/tmp/c.bin \"$UKI\" && strings /tmp/c.bin | grep cryptkey && rm -f /tmp/c.bin"
 echo "Then reboot and touch nothing — no prompt expected."
