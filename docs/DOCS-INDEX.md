@@ -8,4 +8,5 @@
 | [`docs/04-secure-remote.md`](04-secure-remote.md) | VNC + SSH + Tailscale remote access |
 | [`docs/05-hardening.md`](05-hardening.md) | Firewall, nginx, fail2ban, SSH hardening |
 | [`docs/06-headless-boot.md`](06-headless-boot.md) | Headless boot — LUKS root auto-unlock, kill the boot password prompt |
+| [`docs/07-sddm-greeter-idle.md`](07-sddm-greeter-idle.md) | Greeter idle — blank the login screen after 30s (hypridle in the sddm session) |
 | [`docs/articles/`](articles/) | Stories and lessons from the trenches |

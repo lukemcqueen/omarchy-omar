@@ -21,6 +21,7 @@ This repo is the collection of fixes that make an old Mac *stay on, stay reachab
 | [`docs/01-install.md`](docs/01-install.md) | Omarchy install on old Mac + post-install baseline |
 | [`docs/02-power-fixes.md`](docs/02-power-fixes.md) | **The big one** — suspend/hibernate/boot-blocker fixes |
 | [`docs/06-headless-boot.md`](docs/06-headless-boot.md) | **Headless boot (LUKS)** — kill the "lock icon password" boot prompt, auto-unlock encrypted root |
+| [`docs/07-sddm-greeter-idle.md`](docs/07-sddm-greeter-idle.md) | **Greeter idle** — blank the login screen after 30s (hypridle in the sddm session) |
 | [`docs/03-hermes-first-class.md`](docs/03-hermes-first-class.md) | Install Hermes as a system-scope first-class citizen |
 | [`docs/04-secure-remote.md`](docs/04-secure-remote.md) | VNC + SSH + Tailscale remote access |
 | [`docs/05-hardening.md`](docs/05-hardening.md) | Firewall, nginx, fail2ban, SSH hardening |
@@ -38,6 +39,11 @@ sudo bash scripts/fix-power.sh            # see docs/02-power-fixes.md
 sudo bash scripts/fix-headless-luks.sh    # see docs/06-headless-boot.md
 #     (search: "no SSH until login", "Omarchy lock screen", "keyfile could not
 #      be opened reverting to passphrase", "Blake2b hash does not match")
+
+# 1c. Greeter idle — blank the login screen after 30s (monitor stays on forever
+# otherwise; the greeter is its own Hyprland session with no idle daemon)
+sudo bash scripts/fix-greeter-idle.sh     # see docs/07-sddm-greeter-idle.md
+#     (search: "login screen monitor stays on", "hypridle sddm greeter")
 
 # 2. Hermes as a system service
 bash scripts/install-hermes-first-class.sh  # see docs/03-hermes-first-class.md
