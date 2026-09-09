@@ -122,6 +122,13 @@ busctl call org.freedesktop.login1 /org/freedesktop/login1 \
 
 ## 3. "Services only come up after login" — boot-blocking oneshots
 
+> **Before anything else: if the screen is an Omarchy logo + lock icon +
+> password field, the cause is LUKS, not oneshots.** That's Plymouth's
+> drive-unlock dialog — until root decrypts there is NO OS/network/sshd at all,
+> and SSH hangs. Fix: `scripts/fix-headless-luks.sh` /
+> [`docs/06-headless-boot.md`](06-headless-boot.md). The oneshot slowdown below
+> is the *second* (milder) cause: services up late, but only by minutes.
+
 **Symptom:** SSH + agent services appear to start only after you log in at the greeter.
 We proved this one with a probe script on the machine's own clock:
 
