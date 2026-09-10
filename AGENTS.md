@@ -10,6 +10,23 @@ Omarchy customization repository — Hyprland dotfiles, monitor layout, power ma
 4. **Score every change** — begin_change → work → feedback → end_change.
 5. **Test the deployed path** — editing the source file is not the same as testing what runs.
 
+## Known Domains (docs-first — read before touching)
+- **Headless boot / LUKS** — `docs/06-headless-boot.md` (`scripts/fix-headless-luks.sh`).
+  Boot-gate fixes must survive initramfs regeneration; verify with `lsinitcpio`,
+  never `bsdtar`. A LUKS keyfile is not a fix unless it survives a real reboot.
+- **SDDM greeter idle / blank-screen** — `docs/07-sddm-greeter-idle.md`
+  (`scripts/fix-greeter-idle.sh`). SDDM reads EVERY file in `/etc/sddm.conf.d/` —
+  never leave backup/disabled files inside that dir (a `.bak` overrides the live
+  config, same class as the autologin bug). Greeter idle needs `ignore_inhibit`,
+  and legacy `hyprctl dispatch dpms off` fails on Lua-dispatcher Hyprland 0.55+.
+- **Power / suspend** — `docs/02-power-fixes.md`.
+- **Doc index** — `docs/DOCS-INDEX.md` is the navigation index; add new docs there.
+
+## Change Discipline for This Repo
+- Edits here touch a live desktop — test on the actual host, not in a throwaway.
+- Doc changes are first-class: every fix lands as a doc + script pair.
+- Greeter/display changes need the reboot test confirmed by the user before closing.
+
 <!-- Hermes fleet efficiency block (additive — safe to ignore, safe to remove) -->
 <!-- Managed by apply-repo-efficiency.sh; re-running never duplicates. -->
 
