@@ -54,15 +54,25 @@ say "6/6 rebuild UKI + refresh Limine hash"
 limine-mkinitcpio
 limine-entry-tool --add-uki "$ENTRY" "$UKI"
 
-# install pacman hook so future rebuilds auto-refresh the hash
+# install pacman hook so future rebuilds auto-refresh the hash.
+# Trigger MUST be Type=Package on the packages that cause UKI rebuilds. The
+# earlier Type=Path trigger on usr/lib/limine/limine-mkinitcpio NEVER fired
+# (that file does not exist and no package owns it — verified 2026-09-15), and
+# the hook needs a proper [Action]/When=PostTransaction section, not a bare
+# "Action =" line inside [Trigger].
 mkdir -p /etc/pacman.d/hooks
 cat > /etc/pacman.d/hooks/limine-hash-refresh.hook <<'EOF'
 [Trigger]
 Operation = Install
 Operation = Upgrade
-Type = Path
-Target = usr/lib/limine/limine-mkinitcpio
-Action = PostTransaction
+Type = Package
+Target = limine
+Target = linux
+Target = limine-mkinitcpio-hook
+
+[Action]
+Description = Refreshing Limine UKI hash after update...
+When = PostTransaction
 Exec = /bin/sh -c 'limine-entry-tool --add-uki linux /boot/EFI/Linux/omarchy_linux.efi || true'
 EOF
 ok "pacman hook installed (auto-refresh hash on package updates)"

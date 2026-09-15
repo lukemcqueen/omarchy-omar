@@ -26,6 +26,8 @@ This repo is the collection of fixes that make an old Mac *stay on, stay reachab
 | [`docs/04-secure-remote.md`](docs/04-secure-remote.md) | VNC + SSH + Tailscale remote access |
 | [`docs/05-hardening.md`](docs/05-hardening.md) | Firewall, nginx, fail2ban, SSH hardening |
 | [`docs/articles/`](docs/articles/) | Stories and lessons from the trenches |
+| [`docs/08-wireless-broadcom.md`](docs/08-wireless-broadcom.md) | **Wireless (BCM43602)** — brcmfmac, off by default |
+| [`docs/articles/langfuse-clickhouse-trace-spin.md`](docs/articles/langfuse-clickhouse-trace-spin.md) | **Article** — ClickHouse trace-log CPU spin in langfuse |
 | [`scripts/`](scripts/) | Copy-paste fix scripts (idempotent) |
 | [`configs/`](configs/) | Drop-in configs (UPower, systemd, fail2ban, wayvnc) |
 

@@ -10,3 +10,5 @@
 | [`docs/06-headless-boot.md`](06-headless-boot.md) | Headless boot — LUKS root auto-unlock, kill the boot password prompt |
 | [`docs/07-sddm-greeter-idle.md`](07-sddm-greeter-idle.md) | Greeter idle — blank the login screen after 30s (hypridle in the sddm session) |
 | [`docs/articles/`](articles/) | Stories and lessons from the trenches |
+| [`docs/08-wireless-broadcom.md`](08-wireless-broadcom.md) | Wireless (BCM43602) — brcmfmac, off by default |
+| [`docs/articles/langfuse-clickhouse-trace-spin.md`](articles/langfuse-clickhouse-trace-spin.md) | Article: ClickHouse trace-log CPU spin in langfuse |

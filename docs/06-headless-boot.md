@@ -94,7 +94,10 @@ Reboot, touch nothing → no prompt, no Y-warning, SSH up ~30s after power-on.
    changes UKI bytes but leaves the entry `#hash` stale → "Blake2b hash does
    not match! Press Y" at every boot. Always
    `limine-entry-tool --add-uki linux ...efi` after, or install the pacman hook
-   (bundled in the fix script).
+   (bundled in the fix script). The hook MUST use **Type=Package** triggers on
+   `limine`, `linux`, and `limine-mkinitcpio-hook` — the earlier Type=Path
+   trigger on `usr/lib/limine/limine-mkinitcpio` (a file no package owns, so it
+   has nothing to match) silently never fired; verified 2026-09-15, fixed.
 5. **Considering this a login/screensaver/autologin/scope problem** — it's the
    disk. Journal timestamps look scrambled (RTC offset) and services "appear
    up" after unlock only because everything starts together post-decrypt.
@@ -106,3 +109,28 @@ Reboot, touch nothing → no prompt, no Y-warning, SSH up ~30s after power-on.
 7. **Keys on `/boot` with a serious threat model** — anyone with the ESP can
    read the keyfile and unlock root. Fine for a personally-owned box; the ESP
    already holds the kernel. No TPM on 2015 Macs, so this is the tradeoff.
+
+## Re-verify after kernel/limine updates (field note, 2026-09-15)
+
+A routine upgrade (limine 12.8 / linux 7.2.3 / limine-mkinitcpio-hook 1.38.0)
+rebuilds the UKI and rewrites `/boot/limine.conf` but touches **no** `/etc`
+fix file — keyfile, `FILES=`, and `cryptkey.conf` survive untouched. The new
+image is only proven when it boots, so re-verify the deployed artifact after
+any such update (all root, scratch files removed after):
+
+```bash
+objcopy --dump-section .initrd=/tmp/i /boot/EFI/Linux/omarchy_linux.efi
+lsinitcpio -l /tmp/i | grep luks          # your keyfile is inside = GOOD
+rm -f /tmp/i
+objcopy --dump-section .cmdline=/tmp/c /boot/EFI/Linux/omarchy_linux.efi
+strings /tmp/c | grep cryptkey            # cryptkey=rootfs:/boot/<keyfile>
+rm -f /tmp/c
+b2sum -l 512 /boot/EFI/Linux/omarchy_linux.efi   # == #hash in /boot/limine.conf
+limine-entry-tool --add-uki linux /boot/EFI/Linux/omarchy_linux.efi  # idempotent heal
+```
+
+Ground truth for argument order: a silently-booted kernel's `/proc/cmdline`
+contains **exactly one** `cryptkey=rootfs:/boot/<keyfile>` — never a bare
+`cryptkey=`. (A bare line sitting in `/etc/kernel/cmdline` is dead weight;
+the limine-entry-tool assembly drops it.) Never add cryptkey to
+`/etc/kernel/cmdline` — the drop-in is the only live mechanism.

@@ -198,6 +198,57 @@ Also set the idle timeout: `~/.config/omarchy/shell.json` → `"idle": {"screens
 
 ---
 
+## 5. CPU soft-locked at 798 MHz (Haswell + intel_cpufreq)
+
+**Symptom:** sluggish under load; `scaling_cur_freq` reads ~798 MHz on ALL cores while
+processes are actively burning CPU; `/proc/pressure/cpu` `some avg10` elevated (tasks
+stalling). Cross-validate with `grep "cpu MHz" /proc/cpuinfo` — two sources agreeing =
+real, not a reporting quirk.
+
+**Root cause:** the `schedutil` governor on the passive `intel_cpufreq` driver on
+Haswell CPUs (i7-4980HQ here) wedges cores at the minimum P-state and stays there.
+NOT thermal (check `sensors` — package was 48°C, threshold 84°C) and NOT the Apple SMC
+firmware lock. Prove which one it is:
+
+```bash
+sudo sh -c 'echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor' >/dev/null
+sleep 2; grep "cpu MHz" /proc/cpuinfo | head -4
+```
+
+If a core doing work jumps toward max (2.8-4.0 GHz) → OS controls frequency → software
+soft-lock, fix below. If every write is silently ignored and cores stay at 798 → SMC
+firmware lock → reboot / SMC reset path (see the diagnostics skill; not what this box
+had).
+
+**Fix (permanent, survives reboots):** force the `performance` governor at boot via
+systemd-tmpfiles. Do NOT rely on power-profiles-daemon: on this hardware PPD is
+decorative (`/var/lib/power-profiles-daemon/state.ini` shows
+`PlatformDriver=placeholder` — its `Profile=performance` never reached the governor).
+And keep NO comment lines in the tmpfiles file — a stripped `#` becomes an invalid
+command verb ("Unknown modifiers in command: Force").
+
+```bash
+sudo tee /etc/tmpfiles.d/cpufreq-performance.conf >/dev/null <<'EOF'
+w /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu5/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor - - - - performance
+w /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor - - - - performance
+EOF
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/cpufreq-performance.conf
+```
+
+**Verify:** `grep . /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor | sort -u` →
+`performance` on every core; a busy core samples 2.8-4.0 GHz while work runs; PSI
+`some avg10` drops. Expect roughly 3.5-5x on CPU-bound work (builds, DB merges,
+inference). Idle cores keep reading ~798 MHz — `scaling_cur_freq` reports *effective*
+frequency; that is normal, not a regression.
+
+---
+
 ## Order of operations
 
 1. Fix the suspend (drop-in) — otherwise every reboot dies before you can test anything.
