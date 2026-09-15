@@ -14,12 +14,30 @@ Omarchy customization repository — Hyprland dotfiles, monitor layout, power ma
 - **Headless boot / LUKS** — `docs/06-headless-boot.md` (`scripts/fix-headless-luks.sh`).
   Boot-gate fixes must survive initramfs regeneration; verify with `lsinitcpio`,
   never `bsdtar`. A LUKS keyfile is not a fix unless it survives a real reboot.
+  The auto-refresh pacman hook MUST be `Type=Package` on limine/linux/
+  limine-mkinitcpio-hook — `Type=Path` on `usr/lib/limine/limine-mkinitcpio`
+  NEVER fires (no package owns it; verified 2026-09-15), and the hook needs a
+  proper `[Action]`/`When=PostTransaction` section, not a bare `Action =` inside
+  `[Trigger]`. Re-verify after every kernel/limine update: `lsinitcpio` on the
+  embedded .initrd, `strings .cmdline | grep cryptkey`, `b2sum==#hash`, and
+  `/proc/cmdline` ground truth.
 - **SDDM greeter idle / blank-screen** — `docs/07-sddm-greeter-idle.md`
   (`scripts/fix-greeter-idle.sh`). SDDM reads EVERY file in `/etc/sddm.conf.d/` —
   never leave backup/disabled files inside that dir (a `.bak` overrides the live
   config, same class as the autologin bug). Greeter idle needs `ignore_inhibit`,
   and legacy `hyprctl dispatch dpms off` fails on Lua-dispatcher Hyprland 0.55+.
-- **Power / suspend** — `docs/02-power-fixes.md`.
+- **Power / suspend** — `docs/02-power-fixes.md`. Haswell gotcha (2026-09-15):
+  schedutil + intel_cpufreq can soft-lock ALL cores at 798MHz while
+  power-profiles-daemon claims `Profile=performance` — check
+  `CpuDriver=`/`PlatformDriver=` in PPD state.ini before trusting
+  `powerprofilesctl` (`PlatformDriver=placeholder` = cosmetic); persist the
+  governor via `/etc/tmpfiles.d/*.conf` `w` lines (NO comment lines — a stripped
+  `#` turns the line into an invalid command verb and aborts the whole file).
+- **Wireless (BCM43602)** — `docs/08-wireless-broadcom.md` (`scripts/`).
+  Driver of record is in-kernel **brcmfmac** + `linux-firmware` (zero
+  maintenance); avoid `broadcom-wl-dkms` (DKMS build trap per kernel). Apple WPA
+  needs `options brcmfmac feature_disable=0x82000`. Off-by-default = `nmcli
+  radio wifi off` (persists via systemd-rfkill), not blacklist.
 - **Doc index** — `docs/DOCS-INDEX.md` is the navigation index; add new docs there.
 
 ## Change Discipline for This Repo
