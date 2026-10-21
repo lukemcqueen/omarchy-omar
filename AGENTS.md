@@ -45,6 +45,30 @@ Omarchy customization repository — Hyprland dotfiles, monitor layout, power ma
 - Doc changes are first-class: every fix lands as a doc + script pair.
 - Greeter/display changes need the reboot test confirmed by the user before closing.
 
+## Agent Execution Contract
+
+1. **Do real work** — use tools, never simulate outputs, reads, tests, or edits.
+2. **Verify every claim** with real command output before reporting done. "Done"
+   without test output is speculation.
+3. **Inspect before acting** — read the actual file/config/unit, never guess.
+4. **One change at a time** — no batch edits of unrelated files.
+5. **Never fabricate** — a blocker reported honestly beats an invented result.
+
+## Real Execution, No Simulation
+
+- A committed file is not a running service — prove it from the deployed path
+  (the systemd unit, the script, the hook), not from the repo copy.
+- Test the actual send/deploy/reboot path, never a stand-in.
+- A green check you did not observe is not evidence.
+
+## Pre-commit / Pre-push Hooks
+
+- This repo enforces git hooks: PII guard, adversarial gate, identity check,
+  doc-freshness (AGENTS.md sections), and the governance score cycle.
+- Commit only through the hooks — no `--no-verify`, no bypass flags, no
+  `SKIP_SCORE=1`.
+- If a hook blocks you, fix the underlying issue — never route around it.
+
 <!-- Hermes fleet efficiency block (additive — safe to ignore, safe to remove) -->
 <!-- Managed by apply-repo-efficiency.sh; re-running never duplicates. -->
 
