@@ -99,3 +99,31 @@ hermes sessions recover --source ~/.hermes/state.db \
 
 It salvages around damaged rows and never installs over the live DB. Full story:
 [`docs/articles/state-db-recovery.md`](articles/state-db-recovery.md).
+
+## Agent skills path: omarchy ↔ Hermes Cortex coexistence (moses, 2026-10-21)
+
+Omarchy links its agent skills (`omarchy`, `diagnose-crash`) into the per-agent standard
+skill dirs — including `~/.agents/skills/` — via its migration scripts
+(`/usr/share/omarchy/migrations/*.sh`), so desktop coding agents see them. When **Hermes
+Cortex** is also installed on the same host, Cortex now owns the canonical skills tree and
+publishes the agent-visible view at that SAME `~/.agents/skills` path
+(`~/.agents/skills` → `~/.hermes-cortex/skills`). The two coexist because omarchy's skills
+are already symlinked **inside** the Cortex defaults tree
+(`~/.hermes-cortex/skills/omarchy` → `/usr/share/omarchy/default/agents/skills/omarchy`), so
+the published pointer exposes both omarchy's skills and the full Cortex library through one
+path.
+
+Operationally:
+
+- `~/.agents/skills` is now a **symlink to the Cortex defaults**, not omarchy's own real dir.
+- The omarchy migrations that created the real dir are marked applied
+  (`~/.local/state/omarchy/migrations/`), so they don't re-run and re-occupy the path on update.
+- If a Cortex deploy ever reports `agent-visible skills not published` (exit 4, "DECISION
+  REQUIRED"), it means the publish tool found a foreign real dir at the target — run
+  `publish-agent-skills.py --adopt-published` once (preserves the existing tree by rename to
+  `~/.agents/skills.pre-publish-<stamp>`, never deletes). This is an **operator** decision, not
+  an agent default.
+- The omarchy crash-watch consumer reads its skill via the absolute
+  `/usr/share/omarchy/default/agents/skills/diagnose-crash/SKILL.md` path — unaffected by the
+  pointer change.
+
